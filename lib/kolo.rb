@@ -1,4 +1,6 @@
 require 'json'
+require 'nest'
+require './lib/ohm_util.rb'
 
 class Kolo
   def initialize(&block)
@@ -9,10 +11,10 @@ class Kolo
     new(&block) 
   end
 
-  def models; @models ||= {} end
+  def routes; @routes ||= {} end
 
   def resources(name, &block)
-    models[name] = Model.new(&block)
+    routes[name] = Resource.new(&block)
   end
 
   def call(env)
@@ -21,18 +23,18 @@ class Kolo
     seg = Seg.new(path)
 
     inbox = {}
-    model = nil 
+    resource = nil 
     while seg.capture(:segment, inbox)
       segment = inbox[:segment].to_sym
-      if model.nil? && model = models[segment] 
-      elsif model.run(segment)
+      if resource.nil? && resource = routes[segment] 
+      elsif resource.run(segment)
       end
     end
     
-    return model.render(request_method)
+    return resource.render(request_method)
   end
 
-  class Model 
+  class Resource 
 
     def run(segment)  
       if !defined?(@element_name) && element = elements[segment]
