@@ -1,4 +1,5 @@
 require 'json'
+require 'rack'
 require 'nest'
 require './lib/ohm_util.rb'
 
@@ -18,20 +19,20 @@ class Kolo
   end
 
   def call(env)
-    path = '/users/1/nickname'
-    request_method = 'GET'
-    seg = Seg.new(path)
-
+    request = Rack::Request.new(env)
+    seg = Seg.new(request.path_info)
+    
     inbox = {}
     resource = nil 
     while seg.capture(:segment, inbox)
       segment = inbox[:segment].to_sym
+
       if resource.nil? && resource = routes[segment] 
       elsif resource.run(segment)
       end
     end
     
-    return resource.render(request_method)
+    return resource.render(request.request_method)
   end
 
   class Resource 
@@ -42,7 +43,7 @@ class Kolo
         return instance_eval(&element)
       elsif !defined?(@action_name) && action = actions[segment] 
         @action_name = segment
-        puts "action_name: #{@action_name}"
+				
         return instance_eval(&action)
       end
       @id = segment
@@ -53,7 +54,6 @@ class Kolo
       return unless method_block = @request_methods[method]
       
       data = execute('abc', &method_block)
-      puts "result #{JSON.dump(data)}"
     end
 
     def execute(params)
