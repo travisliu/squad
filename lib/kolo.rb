@@ -9,8 +9,12 @@ class Kolo
   end
 
   def self.application(&block)
-    new(&block) 
+    @app = new(&block) 
   end
+
+	def self.call(env)
+    @app.call(env)
+	end
 
   def routes; @routes ||= {} end
 
@@ -32,7 +36,7 @@ class Kolo
       end
     end
     
-    return resource.render(request.request_method)
+    return resource.render(request)
   end
 
   class Resource 
@@ -49,11 +53,12 @@ class Kolo
       @id = segment
     end
 
-    def render(method)
+    def render(request)
       # throw out error if method not found
-      return unless method_block = @request_methods[method]
+      return unless method_block = @request_methods[request.request_method]
       
-      data = execute('abc', &method_block)
+      body = JSON.dump(execute( request.params, &method_block))
+      [200, {}, [body]]
     end
 
     def execute(params)
@@ -92,30 +97,32 @@ class Kolo
       { id: 1, email: 'test@gmail.com', password: '!pw1234'}
     end
 
-    def get(&block);    @request_methods['GET']    = block end
-    def post(&block);   @request_methods['POST']   = block end
-    def put(&block);    @request_methods['PUT']    = block end
-    def delete(&block); @request_methods['DELETE'] = block end
-    
-    def default_actions
-      @request_methods = {} 
+    private 
+      def get(&block);    @request_methods['GET']    = block end
+      def post(&block);   @request_methods['POST']   = block end
+      def put(&block);    @request_methods['PUT']    = block end
+      def delete(&block); @request_methods['DELETE'] = block end
+      
+      def default_actions
+        @request_methods = {} 
 
-      get do |params|
-        attributes
+        get do |params|
+          attributes
+        end
+
+        post do |params|
+          params
+        end
+
+        put do |params|
+        end
+      
+        delete do |params|
+        end
       end
 
-      post do |params|
+      def []
+        attributes 
       end
-
-      put do |params|
-      end
-    
-      delete do |params|
-      end
-    end
-
-    def []
-      attributes 
-    end
   end
 end
