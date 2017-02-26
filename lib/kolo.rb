@@ -8,6 +8,9 @@ class Kolo
     instance_eval(&block)
   end
 
+  def self.redis; @redis = settings[:redis] || Redic.new end
+  def self.settings; @settings ||= {} end
+
   def self.application(&block)
     @app = new(&block) 
   end
@@ -98,6 +101,8 @@ class Kolo
     end
 
     private 
+      def redis; Kolo.redis end
+
       def get(&block);    @request_methods['GET']    = block end
       def post(&block);   @request_methods['POST']   = block end
       def put(&block);    @request_methods['PUT']    = block end
@@ -111,7 +116,6 @@ class Kolo
         end
 
         post do |params|
-          params
         end
 
         put do |params|
