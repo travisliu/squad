@@ -82,16 +82,17 @@ class Kolo
 
     def initialize(name)
       @resource_name = name
+      @attributes = {} 
       default_actions
     end
 
     def self.attribute(name)
       attributes << name unless attributes.include? name
       define_method(name) do 
-        attributes[name]
+        @attributes[name]
       end
       define_method(:"#{name}=") do |value|
-        attributes[name] = value
+        @attributes[name] = value
       end
     end
     
@@ -112,6 +113,8 @@ class Kolo
     def [](id)
       { id: 1, email: 'test@gmail.com', password: '!pw1234'}
     end
+
+    def attributes; @attributes end
 
     private 
       def redis; Kolo.redis end
