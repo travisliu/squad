@@ -1,7 +1,7 @@
 require 'json'
 require 'rack'
 require 'nest'
-require './lib/ohm_util.rb'
+require 'ohm_util'
 
 class Kolo
   def initialize(&block)
@@ -82,7 +82,7 @@ class Kolo
 
     def initialize(name)
       @resource_name = name
-      @attributes = {} 
+      @attributes = Hash[self.class.attributes.map{|key| [key, nil]}]
       default_actions
     end
 
@@ -114,10 +114,39 @@ class Kolo
       { id: 1, email: 'test@gmail.com', password: '!pw1234'}
     end
 
+    def create(atts)
+      @attributes.each do |key, value|
+        attributes[key] = atts[key.to_s] if atts.has_key?(key.to_s)
+      end
+
+      save
+    end
+
+    def save
+      feature = {name: @resource_name}
+      OhmUtil.script( redis,
+                      OhmUtil::LUA_SAVE, 
+                      0,
+                      feature.to_json,
+                      serialize_attributes.to_json,
+                      {}.to_json,
+                      {}.to_json)  
+    end
+    
     def attributes; @attributes end
 
     private 
       def redis; Kolo.redis end
+
+      def serialize_attributes
+        result = []
+        
+        attributes.each do |key, value| 
+          result.push(key, value.to_s) if value
+        end
+
+        result
+      end
 
       def get(&block);    @request_methods['GET']    = block end
       def post(&block);   @request_methods['POST']   = block end
@@ -132,6 +161,7 @@ class Kolo
         end
 
         post do |params|
+          create(params)
         end
 
         put do |params|
