@@ -22,7 +22,7 @@ class Kolo
   def routes; @routes ||= {} end
 
   def resources(name, &block)
-    routes[name] = Resource.new(&block)
+    routes[name] = Resource.factor(&block)
   end
 
   def call(env)
@@ -34,7 +34,8 @@ class Kolo
     while seg.capture(:segment, inbox)
       segment = inbox[:segment].to_sym
 
-      if resource.nil? && resource = routes[segment] 
+      if resource.nil? && klass = routes[segment] 
+        resource = klass.new(segment)
       elsif resource.run(segment)
       end
     end
@@ -45,10 +46,10 @@ class Kolo
   class Resource 
 
     def run(segment)  
-      if !defined?(@element_name) && element = elements[segment]
+      if !defined?(@element_name) && element = self.class.elements[segment]
         @element_name = segment
         return instance_eval(&element)
-      elsif !defined?(@action_name) && action = actions[segment] 
+      elsif !defined?(@action_name) && action = self.class.actions[segment] 
         @action_name = segment
 				
         return instance_eval(&action)
@@ -73,26 +74,32 @@ class Kolo
       yield params
     end
 
-    def initialize(&block)
-      instance_eval(&block)
+    def self.factor(&block)
+      klass = dup
+      klass.class_eval(&block)
+      klass 
+    end
+
+    def initialize(name)
+      @resource_name = name
       default_actions
     end
 
-    def attribute(name)
+    def self.attribute(name)
       attributes << name unless attributes.include? name
     end
     
-    def attributes; @attributes ||= [] end
+    def self.attributes; @attributes ||= [] end
     
-    def actions; @actions ||= {} end
+    def self.actions; @actions ||= {} end
 
-    def action(name, &block)
+    def self.action(name, &block)
       actions[name] = block
     end
     
-    def elements; @elements ||= {} end
+    def self.elements; @elements ||= {} end
     
-    def element(name, &block)
+    def self.element(name, &block)
       elements[name] = block
     end
     
