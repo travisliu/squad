@@ -87,6 +87,12 @@ class Kolo
 
     def self.attribute(name)
       attributes << name unless attributes.include? name
+      define_method(name) do 
+        attributes[name]
+      end
+      define_method(:"#{name}=") do |value|
+        attributes[name] = value
+      end
     end
     
     def self.attributes; @attributes ||= [] end
