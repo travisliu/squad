@@ -44,6 +44,17 @@ class Kolo
   end
 
   class Resource 
+    attr :status
+    
+    # status code sytax suger
+    def ok;                    @status = 200 end
+    def created;               @status = 201 end
+    def no_cotent;             @status = 204 end
+    def bad_request;           @status = 400 end
+    def not_found;             @status = 404 end
+    def internal_server_error; @status = 500 end
+    def not_implemented;       @status = 501 end
+    def bad_gateway;           @status = 502 end
 
     def run(segment)  
       if !defined?(@element_name) && element = self.class.elements[segment]
@@ -61,8 +72,9 @@ class Kolo
       # throw out error if method not found
       return unless method_block = @request_methods[request.request_method]
       
-      body = JSON.dump(execute( request.params, &method_block))
-      [200, {}, [body]]
+      execute( request.params, &method_block)
+      ok if status.nil?
+      [status, {}, [JSON.dump(attributes)]]
     end
 
     def execute(params)
@@ -83,6 +95,7 @@ class Kolo
     def initialize(name)
       @resource_name = name
       @attributes = Hash[self.class.attributes.map{|key| [key, nil]}]
+      @status = nil 
       default_actions
     end
 
@@ -125,14 +138,14 @@ class Kolo
     def save
       feature = {name: @resource_name}
       OhmUtil.script( redis,
-                      OhmUtil::LUA_SAVE, 
+                      OhmUtil::LUA_SAVE,
                       0,
                       feature.to_json,
                       serialize_attributes.to_json,
                       {}.to_json,
-                      {}.to_json)  
-    end
-    
+                      {}.to_json)
+    end  
+
     def attributes; @attributes end
 
     private 
@@ -162,6 +175,7 @@ class Kolo
 
         post do |params|
           create(params)
+          created
         end
 
         put do |params|
