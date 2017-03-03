@@ -46,6 +46,8 @@ class Kolo
   class Resource 
     attr :status
     
+    def id; @id end
+
     # status code sytax suger
     def ok;                    @status = 200 end
     def created;               @status = 201 end
@@ -137,13 +139,14 @@ class Kolo
 
     def save
       feature = {name: @resource_name}
-      OhmUtil.script( redis,
-                      OhmUtil::LUA_SAVE,
-                      0,
-                      feature.to_json,
-                      serialize_attributes.to_json,
-                      {}.to_json,
-                      {}.to_json)
+      feature["id"] = @id if defined?(@id)
+      @id = OhmUtil.script( redis,
+                            OhmUtil::LUA_SAVE,
+                            0,
+                            feature.to_json,
+                            serialize_attributes.to_json,
+                            {}.to_json,
+                            {}.to_json)
     end  
 
     def attributes; @attributes end
