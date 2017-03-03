@@ -62,10 +62,10 @@ class Kolo
       if !defined?(@element_name) && element = self.class.elements[segment]
         @element_name = segment
         return instance_eval(&element)
-      elsif !defined?(@action_name) && action = self.class.actions[segment] 
-        @action_name = segment
+      elsif !defined?(@bulk_name) && bulk = self.class.bulks[segment] 
+        @bulk_name = segment
 				
-        return instance_eval(&action)
+        return instance_eval(&bulk)
       end
       @id = segment
     end
@@ -113,10 +113,10 @@ class Kolo
     
     def self.attributes; @attributes ||= [] end
     
-    def self.actions; @actions ||= {} end
+    def self.bulks; @bulks ||= {} end
 
-    def self.action(name, &block)
-      actions[name] = block
+    def self.bulk(name, &block)
+      bulks[name] = block
     end
     
     def self.elements; @elements ||= {} end
@@ -162,25 +162,25 @@ class Kolo
         result
       end
 
-      def get(&block);    @request_methods['GET']    = block end
-      def post(&block);   @request_methods['POST']   = block end
-      def put(&block);    @request_methods['PUT']    = block end
+      def show(&block);   @request_methods['GET']    = block end
+      def create(&block); @request_methods['POST']   = block end
+      def update(&block); @request_methods['PUT']    = block end
       def delete(&block); @request_methods['DELETE'] = block end
       
       def default_actions
         @request_methods = {} 
 
-        get do |params|
+        show do |params|
           attributes
         end
 
-        post do |params|
+        create do |params|
           update_attributes(params)
           save
           created
         end
 
-        put do |params|
+        update do |params|
         end
       
         delete do |params|
