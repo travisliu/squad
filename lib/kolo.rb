@@ -129,12 +129,10 @@ class Kolo
       { id: 1, email: 'test@gmail.com', password: '!pw1234'}
     end
 
-    def create(atts)
+    def update_attributes(atts)
       @attributes.each do |key, value|
         attributes[key] = atts[key.to_s] if atts.has_key?(key.to_s)
       end
-
-      save
     end
 
     def save
@@ -177,7 +175,8 @@ class Kolo
         end
 
         post do |params|
-          create(params)
+          update_attributes(params)
+          save
           created
         end
 
