@@ -32,17 +32,41 @@ class Kolo
     inbox = {}
     seg.capture(:segment, inbox)  
     segment = inbox[:segment].to_sym
-    return [404, {}, []] unless klass = routes[segment]
+    raise BadRequestError unless klass = routes[segment]
 
     resource = klass.new(segment)
     resource.run(seg)
-    return resource.render(request)
+    execute(request.params, &resource.request_method(request))
+    [resource.status, {}, [resource.to_json]]
+  rescue Error => e
+    [e.status, e.header, [e.message]]
+  rescue Exception => e
+    error = Error.new
+    [error.status, error.header, error.message]
+  end
+
+  def execute(params, &block)
+    yield params
+  end
+
+  class Error < StandardError
+    def status; 500 end
+    def header;  {} end
+    def message; [] end
+  end
+  class NotImplementedError < Error
+    def status; 501 end
+  end
+  class BadRequestError < Error
+    def status; 400 end
+  end
+  class NotFoundError < Error
+    def status; 404 end
   end
 
   class Resource 
-    attr :status
-    
-    def id; @id end
+    def id;     @id end
+    def status; @status || ok end
 
     # status code sytax suger
     def ok;                    @status = 200 end
@@ -71,18 +95,10 @@ class Kolo
       end
     end
 
-    def render(request)
-      # throw out error if method not found
-      return unless method_block = @request_methods[request.request_method]
-      
-      execute( request.params, &method_block)
-      ok if status.nil?
-      [status, {}, [to_json]]
-    end
-
-    def execute(params)
+    def request_method(request)
+      raise NotImplementedError unless method_block = @request_methods[request.request_method]
       load! unless id.nil?
-      yield params
+      method_block
     end
 
     def self.factor(&block)
@@ -123,7 +139,9 @@ class Kolo
     end
     
     def load!
-      update_attributes(Hash[*key[id].call("HGETALL")])
+      result = key[id].call("HGETALL") 
+      raise NotFoundError if result.size == 0
+      update_attributes(Hash[*result])
     end
 
     def update_attributes(atts)
@@ -145,6 +163,10 @@ class Kolo
     end  
 
     def attributes; @attributes end
+
+    def to_json
+      JSON.dump(attributes.merge({id: id}))
+    end
 
     private 
       def redis; Kolo.redis end
@@ -181,9 +203,5 @@ class Kolo
       def []
         attributes 
       end
-
-      def to_json
-        JSON.dump(attributes.merge({id: id}))
-      end 
   end
 end
