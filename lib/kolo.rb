@@ -68,6 +68,7 @@ class Kolo
         return instance_eval(&bulk)
       end
       @id = segment
+      load!
     end
 
     def render(request)
@@ -76,7 +77,7 @@ class Kolo
       
       execute( request.params, &method_block)
       ok if status.nil?
-      [status, {}, [JSON.dump(attributes)]]
+      [status, {}, [to_json]]
     end
 
     def execute(params)
@@ -125,8 +126,8 @@ class Kolo
       elements[name] = block
     end
     
-    def [](id)
-      { id: 1, email: 'test@gmail.com', password: '!pw1234'}
+    def load!
+      update_attributes(Hash[*key[id].call("HGETALL")])
     end
 
     def update_attributes(atts)
@@ -151,6 +152,7 @@ class Kolo
 
     private 
       def redis; Kolo.redis end
+      def key;   @key ||= Nest.new(@resource_name, redis) end
 
       def serialize_attributes
         result = []
@@ -171,7 +173,6 @@ class Kolo
         @request_methods = {} 
 
         show do |params|
-          attributes
         end
 
         create do |params|
@@ -179,16 +180,14 @@ class Kolo
           save
           created
         end
-
-        update do |params|
-        end
-      
-        delete do |params|
-        end
       end
 
       def []
         attributes 
       end
+
+      def to_json
+        JSON.dump(attributes.merge({id: id}))
+      end 
   end
 end
