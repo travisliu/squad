@@ -30,16 +30,12 @@ class Kolo
     seg = Seg.new(request.path_info)
     
     inbox = {}
-    resource = nil 
-    while seg.capture(:segment, inbox)
-      segment = inbox[:segment].to_sym
+    seg.capture(:segment, inbox)  
+    segment = inbox[:segment].to_sym
+    return [404, {}, []] unless klass = routes[segment]
 
-      if resource.nil? && klass = routes[segment] 
-        resource = klass.new(segment)
-      elsif resource.run(segment)
-      end
-    end
-    
+    resource = klass.new(segment)
+    resource.run(seg)
     return resource.render(request)
   end
 
@@ -58,17 +54,21 @@ class Kolo
     def not_implemented;       @status = 501 end
     def bad_gateway;           @status = 502 end
 
-    def run(segment)  
-      if !defined?(@element_name) && element = self.class.elements[segment]
-        @element_name = segment
-        return instance_eval(&element)
-      elsif !defined?(@bulk_name) && bulk = self.class.bulks[segment] 
-        @bulk_name = segment
-				
-        return instance_eval(&bulk)
+    def run(seg)  
+      inbox = {}
+      while seg.capture(:segment, inbox)
+        segment = inbox[:segment].to_sym
+
+        if !defined?(@element_name) && element = self.class.elements[segment]
+          @element_name = segment
+          return instance_eval(&element)
+        elsif !defined?(@bulk_name) && bulk = self.class.bulks[segment] 
+          @bulk_name = segment
+          
+          return instance_eval(&bulk)
+        end
+        @id = segment
       end
-      @id = segment
-      load!
     end
 
     def render(request)
@@ -81,11 +81,7 @@ class Kolo
     end
 
     def execute(params)
-      if @id.nil?
-
-      else
-
-      end
+      load! unless id.nil?
       yield params
     end
 
