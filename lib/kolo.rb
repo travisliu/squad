@@ -84,9 +84,10 @@ class Kolo
 
     def run(seg)  
       inbox = {}
+      default_actions
       while seg.capture(:segment, inbox)
         segment = inbox[:segment].to_sym
-
+        @request_methods = {}
         if !defined?(@element_name) && element = self.class.elements[segment]
           @element_name = segment
           return instance_eval(&element)
@@ -94,8 +95,10 @@ class Kolo
           @bulk_name = segment
           
           return instance_eval(&bulk)
+        elsif !defined?(@id)
+          @id = segment
+          default_element_action
         end
-        @id = segment
       end
     end
 
@@ -116,7 +119,6 @@ class Kolo
       @attributes = Hash[self.class.attributes.map{|key| [key, nil]}]
       @status = nil 
       @header = DEFAULT_HEADER
-      default_actions
     end
 
     def self.attribute(name)
@@ -202,6 +204,16 @@ class Kolo
           update_attributes(params)
           save
           created
+        end
+      end
+
+      def default_element_action
+        show do |params|
+        end
+
+        update do |params|
+          update_attributes(params)
+          save
         end
       end
 
