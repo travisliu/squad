@@ -4,6 +4,8 @@ require 'nest'
 require 'ohm_util'
 
 class Kolo
+  DEFAULT_HEADER = {"Content-Type" => 'application/json;charset=UTF-8'}
+
   def initialize(&block)
     instance_eval(&block)
   end
@@ -37,12 +39,12 @@ class Kolo
     resource = klass.new(segment)
     resource.run(seg)
     execute(request.params, &resource.request_method(request))
-    [resource.status, {}, [resource.to_json]]
+    [resource.status, resource.header, [resource.to_json]]
   rescue Error => e
-    [e.status, e.header, [e.message]]
+    [e.status, e.header, [JSON.dump(e.body)]]
   rescue Exception => e
     error = Error.new
-    [error.status, error.header, error.message]
+    [error.status, error.header, [JSON.dump(error.body)]]
   end
 
   def execute(params, &block)
@@ -51,8 +53,8 @@ class Kolo
 
   class Error < StandardError
     def status; 500 end
-    def header;  {} end
-    def message; [] end
+    def header; DEFAULT_HEADER end
+    def body; {message: 'error'} end
   end
   class NotImplementedError < Error
     def status; 501 end
@@ -65,7 +67,9 @@ class Kolo
   end
 
   class Resource 
-    def id;     @id end
+    attr :header
+    attr :id
+
     def status; @status || ok end
 
     # status code sytax suger
@@ -111,6 +115,7 @@ class Kolo
       @resource_name = name
       @attributes = Hash[self.class.attributes.map{|key| [key, nil]}]
       @status = nil 
+      @header = DEFAULT_HEADER
       default_actions
     end
 
