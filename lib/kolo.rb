@@ -169,6 +169,22 @@ class Kolo
                             {}.to_json)
     end  
 
+    def delete
+     OhmUtil.script(redis,
+										OhmUtil::LUA_DELETE, 0,
+										{ "name" => @resource_name,
+											"id" => id,
+											"key" => key[id].to_s
+										}.to_json,
+										{}.to_json,
+										{}.to_json
+									) 
+      @attributes.each do |key, value|
+        attributes[key] = nil 
+      end
+      @id = nil
+    end
+
     def attributes; @attributes end
 
     def to_json
@@ -192,13 +208,12 @@ class Kolo
       def show(&block);   @request_methods['GET']    = block end
       def create(&block); @request_methods['POST']   = block end
       def update(&block); @request_methods['PUT']    = block end
-      def delete(&block); @request_methods['DELETE'] = block end
+      def destory(&block); @request_methods['DELETE'] = block end
       
       def default_actions
         @request_methods = {} 
 
-        show do |params|
-        end
+        show { |params| }
 
         create do |params|
           update_attributes(params)
@@ -208,13 +223,14 @@ class Kolo
       end
 
       def default_element_action
-        show do |params|
-        end
+        show { |params| }
 
         update do |params|
           update_attributes(params)
           save
         end
+
+        destory { |params| delete }
       end
 
       def []
