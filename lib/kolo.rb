@@ -144,7 +144,14 @@ class Kolo
     def self.element(name, &block)
       elements[name] = block
     end
+
+    def self.indices; @indices ||= [] end
+    def self.index(attribute)
+      indices << attribute unless indices.include?(attribute)
+    end
     
+    def resource; self.class end
+
     def load!
       result = key[id].call("HGETALL") 
       raise NotFoundError if result.size == 0
@@ -160,12 +167,19 @@ class Kolo
     def save
       feature = {name: @resource_name}
       feature["id"] = @id if defined?(@id)
+      
+      indices = {}
+      resource.indices.each do |field|
+        next unless (value = send(field))
+        indices[field] = Array(value).map(&:to_s)
+      end
+
       @id = OhmUtil.script( redis,
                             OhmUtil::LUA_SAVE,
                             0,
                             feature.to_json,
                             serialize_attributes.to_json,
-                            {}.to_json,
+                            indices.to_json,
                             {}.to_json)
     end  
 
