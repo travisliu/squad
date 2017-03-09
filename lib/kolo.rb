@@ -114,8 +114,9 @@ class Kolo
       klass 
     end
 
-    def initialize(name)
+    def initialize(name, id = nil) 
       @resource_name = name
+      @id = id if id
       @attributes = Hash[self.class.attributes.map{|key| [key, nil]}]
       @status = nil 
       @header = DEFAULT_HEADER
@@ -152,10 +153,15 @@ class Kolo
     
     def resource; self.class end
 
+    def find(id)
+      resource.new(@resource_name, id).load!
+    end
+
     def load!
       result = key[id].call("HGETALL") 
       raise NotFoundError if result.size == 0
       update_attributes(Hash[*result])
+      return self
     end
 
     def update_attributes(atts)
@@ -206,6 +212,8 @@ class Kolo
     end
 
     private 
+      attr_writer :id
+
       def redis; Kolo.redis end
       def key;   @key ||= Nest.new(@resource_name, redis) end
 
@@ -245,10 +253,6 @@ class Kolo
         end
 
         destory { |params| delete }
-      end
-
-      def []
-        attributes 
       end
   end
 end
