@@ -38,17 +38,13 @@ class Kolo
 
     resource = klass.new(segment)
     resource.run(seg)
-    execute(request.params, &resource.request_method(request))
+    resource.render(request)
     [resource.status, resource.header, [resource.to_json]]
   rescue Error => e
     [e.status, e.header, [JSON.dump(e.body)]]
   rescue Exception => e
     error = Error.new
     [error.status, error.header, [JSON.dump(error.body)]]
-  end
-
-  def execute(params, &block)
-    yield params
   end
 
   class Error < StandardError
@@ -85,6 +81,7 @@ class Kolo
     def run(seg)  
       inbox = {}
       default_actions
+
       while seg.capture(:segment, inbox)
         segment = inbox[:segment].to_sym
         @request_methods = {}
@@ -93,7 +90,6 @@ class Kolo
           return instance_eval(&element)
         elsif !defined?(@bulk_name) && bulk = self.class.bulks[segment] 
           @bulk_name = segment
-          
           return instance_eval(&bulk)
         elsif !defined?(@id)
           @id = segment
@@ -102,11 +98,17 @@ class Kolo
       end
     end
 
-    def request_method(request)
+    def render(request)
       raise NotImplementedError unless method_block = @request_methods[request.request_method]
       load! unless id.nil?
-      method_block
+      execute(request.params, &method_block)
     end
+
+    def execute(params, &block)
+      @results = yield params
+    end
+
+    def element_type?; !defined?(@results) || !@results.kind_of?(Collection) end 
 
     def self.factor(&block)
       klass = dup
@@ -114,10 +116,10 @@ class Kolo
       klass 
     end
 
-    def initialize(name, id = nil) 
-      @resource_name = name
-      @id = id if id
+    def initialize(name, attributes = {}) 
       @attributes = Hash[self.class.attributes.map{|key| [key, nil]}]
+      @resource_name = name
+      update_attributes(attributes)
       @status = nil 
       @header = DEFAULT_HEADER
     end
@@ -154,7 +156,12 @@ class Kolo
     def resource; self.class end
 
     def find(id)
-      resource.new(@resource_name, id).load!
+      resource.new(@resource_name, {"id" => id}).load!
+    end
+
+    def query(attribute, value)
+      ids = key[:indices][attribute][value].call("SMEMBERS")
+      Collection.new(self, ids)
     end
 
     def load!
@@ -165,9 +172,10 @@ class Kolo
     end
 
     def update_attributes(atts)
-      @attributes.each do |key, value|
-        attributes[key] = atts[key.to_s] if atts.has_key?(key.to_s)
+      @attributes.each do |attribute, value|
+        send(:"#{attribute}=", atts[attribute.to_s]) if atts.has_key?(attribute.to_s)
       end
+      @id = atts["id"] if atts["id"]
     end
 
     def save
@@ -207,15 +215,30 @@ class Kolo
 
     def attributes; @attributes end
 
-    def to_json
-      JSON.dump(attributes.merge({id: id}))
+    def reproduce(attributes)
+      self.class.new(@resource_name, OhmUtil.dict(attributes))
     end
+
+    def to_hash
+      hash = attributes
+      hash[:id] = @id unless @id.nil?
+
+      return hash
+    end
+
+    def to_json
+      if element_type?
+        JSON.dump(self.to_hash)
+      else
+        @results.to_json
+      end
+    end
+
+    def key;   @key ||= Nest.new(@resource_name, redis) end
+    def redis; Kolo.redis end
 
     private 
       attr_writer :id
-
-      def redis; Kolo.redis end
-      def key;   @key ||= Nest.new(@resource_name, redis) end
 
       def serialize_attributes
         result = []
@@ -227,15 +250,17 @@ class Kolo
         result
       end
 
-      def show(&block);   @request_methods['GET']    = block end
-      def create(&block); @request_methods['POST']   = block end
-      def update(&block); @request_methods['PUT']    = block end
+      def show(&block);    @request_methods['GET']    = block end
+      def create(&block);  @request_methods['POST']   = block end
+      def update(&block);  @request_methods['PUT']    = block end
       def destory(&block); @request_methods['DELETE'] = block end
       
       def default_actions
         @request_methods = {} 
 
-        show { |params| }
+        show do |params| 
+          query(*params.first)
+        end
 
         create do |params|
           update_attributes(params)
@@ -254,5 +279,29 @@ class Kolo
 
         destory { |params| delete }
       end
+  end
+  
+  class Collection
+    include Enumerable
+
+    def initialize(resource, ids)
+      @resource = resource 
+      @ids      = ids
+    end
+
+    def each
+      @ids.each { |id| @resource.redis.queue("HGETALL", @resource.key[id])}
+
+      data = @resource.redis.commit
+      return if data.nil?
+
+      data.each_with_index do |atts, idx|
+        yield @resource.reproduce(atts + ['id', @ids[idx]])
+      end
+    end
+
+    def to_json
+      JSON.dump(self.map { |e| e.to_hash })
+    end
   end
 end
