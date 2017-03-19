@@ -21,10 +21,10 @@ class Kolo
     @app.call(env)
 	end
 
-  def routes; @routes ||= {} end
+  def self.routes; @routes ||= {} end
 
   def resources(name, &block)
-    routes[name] = Resource.factor(&block)
+    self.class.routes[name] = Resource.factor(&block)
   end
 
   def call(env)
@@ -34,7 +34,7 @@ class Kolo
     inbox = {}
     seg.capture(:segment, inbox)  
     segment = inbox[:segment].to_sym
-    raise BadRequestError unless klass = routes[segment]
+    raise BadRequestError unless klass = self.class.routes[segment]
 
     resource = klass.new(segment)
     resource.run(seg)
@@ -94,6 +94,8 @@ class Kolo
         elsif !defined?(@id)
           @id = segment
           default_element_action
+        elsif defined?(@id) && collection = self.class.collections[segment]
+          return instance_eval(&collection)
         end
       end
     end
@@ -151,6 +153,22 @@ class Kolo
     def self.indices; @indices ||= [] end
     def self.index(attribute)
       indices << attribute unless indices.include?(attribute)
+    end
+
+    def self.collections; @collections ||= {} end
+    def self.collection(name)
+      collections[name] = Proc.new do 
+        show do |params|
+          resource = Kolo.routes[name].new(name)
+          resource.query("#{@resource_name}_id", @id)
+        end 
+      end
+    end
+
+    def self.reference(name)
+      field = :"#{name}_id" 
+      attribute field 
+      index field 
     end
     
     def resource; self.class end
