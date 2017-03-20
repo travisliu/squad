@@ -17,9 +17,9 @@ class Kolo
     @app = new(&block) 
   end
 
-	def self.call(env)
+  def self.call(env)
     @app.call(env)
-	end
+  end
 
   def self.routes; @routes ||= {} end
 
@@ -206,25 +206,27 @@ class Kolo
         indices[field] = Array(value).map(&:to_s)
       end
 
-      @id = OhmUtil.script( redis,
-                            OhmUtil::LUA_SAVE,
-                            0,
-                            feature.to_json,
-                            serialize_attributes.to_json,
-                            indices.to_json,
-                            {}.to_json)
+      @id = OhmUtil.script(redis,
+        OhmUtil::LUA_SAVE,
+        0,
+        feature.to_json,
+        serialize_attributes.to_json,
+        indices.to_json,
+        {}.to_json
+      )
     end  
 
     def delete
-     OhmUtil.script(redis,
-										OhmUtil::LUA_DELETE, 0,
-										{ "name" => @resource_name,
-											"id" => id,
-											"key" => key[id].to_s
-										}.to_json,
-										{}.to_json,
-										{}.to_json
-									) 
+      OhmUtil.script(redis,
+        OhmUtil::LUA_DELETE, 0, {
+          "name" => @resource_name,
+          "id" => id,
+          "key" => key[id].to_s
+        }.to_json,
+        {}.to_json,
+        {}.to_json
+      )
+
       @attributes.each do |key, value|
         attributes[key] = nil 
       end
