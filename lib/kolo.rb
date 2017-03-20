@@ -27,7 +27,9 @@ class Kolo
     self.class.routes[name] = Resource.factor(&block)
   end
 
-  def call(env)
+  def call(env); dup.call!(env) end
+
+  def call!(env)
     request = Rack::Request.new(env)
     seg = Seg.new(request.path_info)
     
