@@ -87,18 +87,30 @@ class Kolo
       while seg.capture(:segment, inbox)
         segment = inbox[:segment].to_sym
         @request_methods = {}
-        if !defined?(@element_name) && element = self.class.elements[segment]
-          @element_name = segment
-          return instance_eval(&element)
-        elsif !defined?(@bulk_name) && bulk = self.class.bulks[segment] 
-          @bulk_name = segment
-          return instance_eval(&bulk)
-        elsif new? 
-          @id = segment
-          default_element_action
-        elsif !new? && collection = self.class.collections[segment]
-          return instance_eval(&collection)
+
+        if new? && !defined?(@bulk_name)
+          if bulk = self.class.bulks[segment]
+            @bulk_name = segment
+            return instance_eval(&bulk)
+          else
+            @id = segment
+            load!
+            default_element_action
+            next 
+          end
         end
+
+        if !defined?(@element_name) && !defined?(@collection_name)
+          if element = self.class.elements[segment]
+            @element_name = segment
+            return instance_eval(&element)
+          elsif collection = self.class.collections[segment]
+            @collection_name = segment
+            return instance_eval(&collection)
+          end
+        end
+
+        raise BadRequestError 
       end
     end
 
