@@ -93,10 +93,10 @@ class Kolo
         elsif !defined?(@bulk_name) && bulk = self.class.bulks[segment] 
           @bulk_name = segment
           return instance_eval(&bulk)
-        elsif !defined?(@id)
+        elsif new? 
           @id = segment
           default_element_action
-        elsif defined?(@id) && collection = self.class.collections[segment]
+        elsif !new? && collection = self.class.collections[segment]
           return instance_eval(&collection)
         end
       end
@@ -200,7 +200,7 @@ class Kolo
 
     def save
       feature = {name: @resource_name}
-      feature["id"] = @id if defined?(@id)
+      feature["id"] = @id unless new? 
       
       indices = {}
       resource.indices.each do |field|
@@ -262,6 +262,7 @@ class Kolo
     private 
       attr_writer :id
 
+      def new?; !defined?(@id) end
       def serialize_attributes
         result = []
         
