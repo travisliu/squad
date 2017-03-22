@@ -45,6 +45,7 @@ class Kolo
   rescue Error => e
     [e.status, e.header, [JSON.dump(e.body)]]
   rescue Exception => e
+    puts "message: #{e.message}, b: #{e.backtrace}"
     error = Error.new
     [error.status, error.header, [JSON.dump(error.body)]]
   end
@@ -190,6 +191,8 @@ class Kolo
     def find(id)
       resource.new(@resource_name, {"id" => id}).load!
     end
+    
+    def all; Collection.new(self, key[:all].call("SMEMBERS")) end
 
     def query(attribute, value)
       ids = key[:indices][attribute][value].call("SMEMBERS")
@@ -294,7 +297,11 @@ class Kolo
         @request_methods = {} 
 
         show do |params| 
-          query(*params.first)
+          if params.size == 0
+            all
+          else
+            query(*params.first)
+          end
         end
 
         create do |params|
