@@ -1,6 +1,7 @@
 require 'json'
 require 'rack'
 require 'nest'
+require 'seg'
 require 'ohm_util'
 
 class Kolo
