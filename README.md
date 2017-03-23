@@ -30,7 +30,7 @@ Kolo.application do
     collection :posts
   end
 
-  resource :posts do
+  resources :posts do
     attribute :title
     attribute :content
 
@@ -69,21 +69,34 @@ Kolo.application do
     attribute :name
     attribute :email
 
-    element :blurring do
-      # GET /users/:id/blurring
+    element :showcase do
+      # GET /users/:id/showcase
       show do |params|
         self.email[1..3] = 'xxx' 
       end
 
-      # PUT /users/:id
+      # PUT /users/:id/showcase
       update do |params|
         self.email = params["email"]
         save
       end
 
-      # DELETE /users/:id
+      # DELETE /users/:id/showcase
       destory do |params|
         delete if self.email == params["email"]
+      end
+    end
+
+    bulk :signup do
+      # POST /users/signup
+      create do |params|
+        if params["email"].include?("@gmail.com")
+          update_attributes(params)
+          save
+          created
+        else
+          bad_request 
+        end
       end
     end
   end
