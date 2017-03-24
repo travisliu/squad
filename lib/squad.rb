@@ -4,7 +4,7 @@ require 'nest'
 require 'seg'
 require 'ohm_util'
 
-class Kolo
+class Squad 
   DEFAULT_HEADER = {"Content-Type" => 'application/json;charset=UTF-8'}
 
   def initialize(&block)
@@ -175,7 +175,7 @@ class Kolo
     def self.collection(name)
       collections[name] = Proc.new do 
         show do |params|
-          resource = Kolo.routes[name].new(name)
+          resource = Squad.routes[name].new(name)
           resource.query("#{@resource_name}_id", @id)
         end 
       end
@@ -273,7 +273,7 @@ class Kolo
     end
 
     def key;   @key ||= Nest.new(@resource_name, redis) end
-    def redis; Kolo.redis end
+    def redis; Squad.redis end
 
     private 
       attr_writer :id

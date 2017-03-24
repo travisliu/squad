@@ -1,5 +1,5 @@
 require "cutest"
-require_relative "../lib/kolo"
+require_relative "../lib/squad"
 
 def mock_request(app, url, method, payload = nil)
   env = Rack::MockRequest.env_for( url,
@@ -11,15 +11,15 @@ def mock_request(app, url, method, payload = nil)
 end
 
 prepare do 
-  Kolo.settings[:redis] = Redic.new 'redis://database:6379/2'
+  Squad.settings[:redis] = Redic.new 'redis://database:6379/2'
 end
 
 setup do
-  Kolo.settings[:redis].call "FLUSHDB"
+  Squad.settings[:redis].call "FLUSHDB"
 end
 
 test "basic create, read, update and destory functionality" do |params|
-  app = Kolo.application do 
+  app = Squad.application do 
     resources :users do
       attribute :name
       attribute :email
@@ -44,7 +44,7 @@ test "basic create, read, update and destory functionality" do |params|
 end
 
 test "can be queried with index" do |params|
-  app = Kolo.application do 
+  app = Squad.application do 
     resources :users do
       attribute :name
       attribute :email
@@ -64,7 +64,7 @@ test "can be queried with index" do |params|
 end
 
 test "find collection" do
-  app = Kolo.application do 
+  app = Squad.application do 
     resources :users do
       attribute :name
       attribute :email
@@ -92,7 +92,7 @@ test "find collection" do
 end
 
 test "custom action" do
-  app = Kolo.application do
+  app = Squad.application do
     resources :users do
       attribute :name
       attribute :email

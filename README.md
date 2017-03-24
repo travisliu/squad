@@ -1,28 +1,28 @@
-# Kolo
+# Squad 
 
 Simple, efficient RESTful framework in Ruby with Redis.
 
-Kolo uses Redis to store resources inspired by [Ohm](https://github.com/soveran/ohm), and provides a simple DSL to easily develop APIs.
+Squad uses Redis to store resources inspired by [Ohm](https://github.com/soveran/ohm), and provides a simple DSL to easily develop APIs.
 
 ## Getting started 
 ### Installation
 ``` conosle
-gem install kolo
+gem install Squad
 ```
 
 ### Usage
 
-Kolo assumes Redis was started with address `localhost` and port `6379`. If you need to connect to a remote server or different port, try: 
+Squad assumes Redis was started with address `localhost` and port `6379`. If you need to connect to a remote server or different port, try: 
 ``` ruby 
-Kolo.settings[:redis] = Redic.new 'redis://10.1.0.1:6379'
+Squad.settings[:redis] = Redic.new 'redis://10.1.0.1:6379'
 ```
 
 Hear's an example that has two resources users and products. 
 ``` ruby
-# cat hello_kolo.rb
-require "kolo"
+# cat hello_squad.rb
+require "squad"
 
-Kolo.application do 
+Squad.application do 
   resources :users do
     attribute :name
     attribute :email
@@ -43,9 +43,9 @@ All resources have the id attribute built in, you don't need to declare it.
 To run it, you can create a `config.ru` file
 ``` ruby
 # cat config.ru
-require 'hello_kolo.rb'
+require 'hello_squad.rb'
 
-run Kolo
+run Squad 
 ```
 Then run `rackup`. 
 
@@ -62,9 +62,9 @@ GET /users/:id/posts
 ### Custom action
 You can operate the single element in custom action.
 ``` ruby
-require "kolo"
+require "squad"
 
-Kolo.application do
+Squad.application do
   resources :users do
     attribute :name
     attribute :email
@@ -107,9 +107,9 @@ end
 Index helps you quick lookup elements.
 
 ``` ruby
-require "kolo"
+require "squad"
 
-Kolo.application do
+Squad.application do
   resources :users do
     attribute :name
     attribute :email
@@ -122,9 +122,9 @@ end
 
 You can have a customize query as well. 
 ``` ruby
-require "kolo"
+require "squad"
 
-Kolo.application do
+Squad.application do
   resources :users do
     attribute :name
     attribute :email
