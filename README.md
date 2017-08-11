@@ -155,6 +155,7 @@ Squad.application do
 
     process_request do |request|
         send(:extra_data=, request.body.read)
+        save
     end
   end
 end
