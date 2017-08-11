@@ -143,4 +143,19 @@ Squad.application do
   end
 end
 ```
+### Processing request
+If you need to do something with your request you can (for example, using the request body)
 
+``` ruby
+require "squad"
+
+Squad.application do
+  resources :users do
+    attribute :extra_data
+
+    process_request do |request|
+        send(:extra_data=, request.body.read)
+    end
+  end
+end
+```
