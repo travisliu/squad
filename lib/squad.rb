@@ -4,7 +4,7 @@ require 'nest'
 require 'seg'
 require 'ohm_util'
 
-class Squad 
+class Squad
   DEFAULT_HEADER = {"Content-Type" => 'application/json;charset=UTF-8'}
 
   def initialize(&block)
@@ -15,7 +15,7 @@ class Squad
   def self.settings; @settings ||= {} end
 
   def self.application(&block)
-    @app = new(&block) 
+    @app = new(&block)
   end
 
   def self.call(env)
@@ -33,9 +33,9 @@ class Squad
   def call!(env)
     request = Rack::Request.new(env)
     seg = Seg.new(request.path_info)
-    
+
     inbox = {}
-    seg.capture(:segment, inbox)  
+    seg.capture(:segment, inbox)
     segment = inbox[:segment].to_sym
     raise BadRequestError unless klass = self.class.routes[segment]
 
@@ -66,7 +66,7 @@ class Squad
     def status; 404 end
   end
 
-  class Resource 
+  class Resource
     attr :header
     attr :id
 
@@ -82,7 +82,7 @@ class Squad
     def not_implemented;       @status = 501 end
     def bad_gateway;           @status = 502 end
 
-    def run(seg)  
+    def run(seg)
       inbox = {}
       default_actions
 
@@ -98,7 +98,7 @@ class Squad
             @id = segment
             load!
             default_element_action
-            next 
+            next
           end
         end
 
@@ -112,7 +112,7 @@ class Squad
           end
         end
 
-        raise BadRequestError 
+        raise BadRequestError
       end
     end
 
@@ -120,48 +120,49 @@ class Squad
       raise NotImplementedError unless method_block = @request_methods[request.request_method]
       load! unless id.nil?
       execute(request.params, &method_block)
+      instance_exec(request) { |request| process_request request }
     end
 
     def execute(params, &block)
       @results = yield params
     end
 
-    def element_type?; !defined?(@results) || !@results.kind_of?(Collection) end 
+    def element_type?; !defined?(@results) || !@results.kind_of?(Collection) end
 
     def self.factor(&block)
       klass = dup
       klass.class_eval(&block)
-      klass 
+      klass
     end
 
-    def initialize(name, attributes = {}) 
+    def initialize(name, attributes = {})
       @attributes = Hash[self.class.attributes.map{|key| [key, nil]}]
       @resource_name = name
       update_attributes(attributes)
-      @status = nil 
+      @status = nil
       @header = DEFAULT_HEADER
     end
 
     def self.attribute(name)
       attributes << name unless attributes.include? name
-      define_method(name) do 
+      define_method(name) do
         @attributes[name]
       end
       define_method(:"#{name}=") do |value|
         @attributes[name] = value
       end
     end
-    
+
     def self.attributes; @attributes ||= [] end
-    
+
     def self.bulks; @bulks ||= {} end
 
     def self.bulk(name, &block)
       bulks[name] = block
     end
-    
+
     def self.elements; @elements ||= {} end
-    
+
     def self.element(name, &block)
       elements[name] = block
     end
@@ -173,26 +174,30 @@ class Squad
 
     def self.collections; @collections ||= {} end
     def self.collection(name)
-      collections[name] = Proc.new do 
+      collections[name] = Proc.new do
         show do |params|
           resource = Squad.routes[name].new(name)
           resource.query("#{@resource_name}_id", @id)
-        end 
+        end
       end
     end
 
     def self.reference(name)
-      field = :"#{name}_id" 
-      attribute field 
-      index field 
+      field = :"#{name}_id"
+      attribute field
+      index field
     end
-    
+
+    def self.process_request(&block)
+      define_method(:process_request, block)
+    end
+
     def resource; self.class end
 
     def find(id)
       resource.new(@resource_name, {"id" => id}).load!
     end
-    
+
     def all; Collection.new(self, key[:all].call("SMEMBERS")) end
 
     def query(attribute, value)
@@ -201,7 +206,7 @@ class Squad
     end
 
     def load!
-      result = key[id].call("HGETALL") 
+      result = key[id].call("HGETALL")
       raise NotFoundError if result.size == 0
       update_attributes(Hash[*result])
       return self
@@ -216,8 +221,8 @@ class Squad
 
     def save
       feature = {name: @resource_name}
-      feature["id"] = @id unless new? 
-      
+      feature["id"] = @id unless new?
+
       indices = {}
       resource.indices.each do |field|
         next unless (value = send(field))
@@ -232,7 +237,7 @@ class Squad
         indices.to_json,
         {}.to_json
       )
-    end  
+    end
 
     def delete
       OhmUtil.script(redis,
@@ -246,7 +251,7 @@ class Squad
       )
 
       @attributes.each do |key, value|
-        attributes[key] = nil 
+        attributes[key] = nil
       end
       @id = nil
     end
@@ -275,14 +280,14 @@ class Squad
     def key;   @key ||= Nest.new(@resource_name, redis) end
     def redis; Squad.redis end
 
-    private 
+    private
       attr_writer :id
 
       def new?; !defined?(@id) end
       def serialize_attributes
         result = []
-        
-        attributes.each do |key, value| 
+
+        attributes.each do |key, value|
           result.push(key, value.to_s) if value
         end
 
@@ -293,11 +298,11 @@ class Squad
       def create(&block);  @request_methods['POST']   = block end
       def update(&block);  @request_methods['PUT']    = block end
       def destory(&block); @request_methods['DELETE'] = block end
-      
-      def default_actions
-        @request_methods = {} 
 
-        show do |params| 
+      def default_actions
+        @request_methods = {}
+
+        show do |params|
           if params.size == 0
             all
           else
@@ -323,12 +328,12 @@ class Squad
         destory { |params| delete }
       end
   end
-  
+
   class Collection
     include Enumerable
 
     def initialize(resource, ids)
-      @resource = resource 
+      @resource = resource
       @ids      = ids
     end
 
