@@ -119,8 +119,8 @@ class Squad
     def render(request)
       raise NotImplementedError unless method_block = @request_methods[request.request_method]
       load! unless id.nil?
-      execute(request.params, &method_block)
       instance_exec(request) { |request| process_request request }
+      execute(request.params, &method_block)    
     end
 
     def execute(params, &block)
